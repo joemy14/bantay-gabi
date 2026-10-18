@@ -1,6 +1,6 @@
 local Config = {}
 
-Config.GameName = "Bantay Gabi"
+Config.GameName = "Survive 4 Zombies"
 
 Config.MaxPlayers = 6
 Config.MaxActiveZombies = 40
