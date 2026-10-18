@@ -44,4 +44,187 @@
     .row > * { flex: 1 1 130px; }
     button {
       padding: 13px; border: none; border-radius: 14px; font: inherit; font-weight: 700;
-      color: #fff; cursor: pointer;
+      color: #fff; cursor: pointer; margin-bottom: 8px;
+      background: linear-gradient(90deg, var(--red-soft), var(--red));
+    }
+    button.danger { background: linear-gradient(90deg, #8b0000, #4a0000); }
+    button.ghost { background: rgba(255,255,255,.06); border: 1px solid var(--border); }
+    button:disabled { opacity: .6; cursor: wait; }
+    .hint { font-size: 12px; color: #7a6a6a; margin-bottom: 10px; }
+    .status {
+      margin-top: 12px; padding: 12px; border-radius: 12px;
+      border: 1px solid var(--border); background: rgba(0,0,0,.6);
+      color: var(--muted); white-space: pre-wrap; font-size: 14px; line-height: 1.5;
+    }
+    .status.ok { color: var(--ok); }
+    .status.err { color: var(--err); }
+    .status.warn { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>bantay gabi ✦ files</h1>
+    <div class="sub">Browse, create, edit, and delete files in src/. Saves go to main.</div>
+
+    <div class="card">
+      <h2>1. Pick a file</h2>
+      <select id="fileList"><option>Loading...</option></select>
+      <div class="row">
+        <button class="ghost" onclick="loadFiles()">Refresh list</button>
+        <button onclick="openSelected()">Open</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. New file</h2>
+      <input id="newPath" placeholder="src/client/NewThing.client.luau" autocomplete="off">
+      <button onclick="newFile()">Create empty file</button>
+    </div>
+
+    <div class="card">
+      <h2>3. Edit</h2>
+      <input id="currentPath" readonly placeholder="No file open">
+      <textarea id="editor" placeholder="Open a file to edit it here..."></textarea>
+      <div class="row">
+        <button onclick="saveFile()">Save to main</button>
+        <button class="danger" onclick="deleteFile()">Delete file</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4. Find &amp; replace</h2>
+      <textarea id="findText" class="small" placeholder="Exact text to find (copy it from the editor)"></textarea>
+      <textarea id="replaceText" class="small" placeholder="New text to put in its place"></textarea>
+      <div class="row">
+        <button class="ghost" onclick="previewReplace()">Check matches</button>
+        <button onclick="applyReplace()">Replace in editor</button>
+      </div>
+      <div class="hint">Replace only changes the box above. Press "Save to main" after you check it.</div>
+    </div>
+
+    <div id="status" class="status">Ready ✨</div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let openPath = null;
+
+    function say(msg, kind = '') {
+      const s = $('status');
+      s.className = 'status ' + kind;
+      s.textContent = msg;
+    }
+
+    async function api(url, opts = {}) {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opts,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+      return data;
+    }
+
+    async function loadFiles() {
+      say('Loading file list...');
+      try {
+        const data = await api('/api/files');
+        const sel = $('fileList');
+        sel.innerHTML = '';
+        if (!data.files.length) sel.add(new Option('(no files yet)', ''));
+        data.files.forEach(f => sel.add(new Option(f, f)));
+        say(`Found ${data.files.length} files on ${data.branch}.`, 'ok');
+      } catch (e) { say('❌ ' + e.message, 'err'); }
+    }
+
+    async function openFile(p) {
+      say('Opening ' + p + '...');
+      try {
+        const data = await api('/api/file?path=' + encodeURIComponent(p));
+        openPath = p;
+        $('currentPath').value = p;
+        $('editor').value = data.content;
+        say('Opened ' + p, 'ok');
+      } catch (e) { say('❌ ' + e.message, 'err'); }
+    }
+
+    function openSelected() {
+      const p = $('fileList').value;
+      if (p) openFile(p);
+    }
+
+    function newFile() {
+      const p = $('newPath').value.trim();
+      if (!p.startsWith('src/')) return say('❌ Path must start with src/', 'err');
+      openPath = p;
+      $('currentPath').value = p;
+      $('editor').value = '';
+      say('New file ready. Write the content, then press Save to create it.', 'warn');
+    }
+
+    function countMatches() {
+      const find = $('findText').value;
+      if (!find) return { find, count: 0, error: 'Type the text to find first.' };
+      const text = $('editor').value;
+      const count = text.split(find).length - 1;
+      return { find, count };
+    }
+
+    function previewReplace() {
+      const { count, error } = countMatches();
+      if (error) return say('❌ ' + error, 'err');
+      if (count === 0) return say('❌ Not found. Check spelling, spaces, and line breaks.', 'err');
+      if (count > 1) return say(`⚠️ Found ${count} times. Make the find text longer so it matches once.`, 'warn');
+      say('✅ Found exactly once. Tap "Replace in editor" to apply it.', 'ok');
+    }
+
+    function applyReplace() {
+      const { find, count, error } = countMatches();
+      if (error) return say('❌ ' + error, 'err');
+      if (count !== 1) {
+        return say(count === 0
+          ? '❌ Not found. Nothing changed.'
+          : `⚠️ Found ${count} times. Nothing changed. Make the find text longer.`, count === 0 ? 'err' : 'warn');
+      }
+      const replacement = $('replaceText').value;
+      $('editor').value = $('editor').value.replace(find, () => replacement);
+      say('✅ Replaced in the editor. Check it, then tap "Save to main".', 'ok');
+    }
+
+    async function saveFile() {
+      const p = openPath;
+      if (!p) return say('❌ Open or create a file first.', 'err');
+      if (!confirm(`Save ${p} to main?\n\nMain publishes to your live game.`)) return;
+      say('Saving...');
+      try {
+        const data = await api('/api/file', {
+          method: 'PUT',
+          body: JSON.stringify({ path: p, content: $('editor').value }),
+        });
+        say(`✅ ${data.action}: ${p}\nCheck the Actions tab for the deploy.`, 'ok');
+        loadFiles();
+      } catch (e) { say('❌ ' + e.message, 'err'); }
+    }
+
+    async function deleteFile() {
+      const p = openPath;
+      if (!p) return say('❌ Open a file first.', 'err');
+      if (!confirm(`Delete ${p} from main?\n\nThis removes it from the live game on the next deploy.`)) return;
+      say('Deleting...');
+      try {
+        await api('/api/file', {
+          method: 'DELETE',
+          body: JSON.stringify({ path: p }),
+        });
+        openPath = null;
+        $('currentPath').value = '';
+        $('editor').value = '';
+        say(`✅ Deleted ${p}`, 'ok');
+        loadFiles();
+      } catch (e) { say('❌ ' + e.message, 'err'); }
+    }
+
+    loadFiles();
+  </script>
+</body>
+</html>
