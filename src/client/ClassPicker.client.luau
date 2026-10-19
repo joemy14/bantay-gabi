@@ -11,7 +11,7 @@ local RED_DARK = Color3.fromRGB(110, 0, 0)
 local BLACK = Color3.fromRGB(15, 0, 0)
 local WHITE = Color3.new(1, 1, 1)
 
-local PANEL_SIZE = UDim2.fromOffset(280, 340)
+local PANEL_SIZE = UDim2.fromOffset(250, 290)
 
 local DESCRIPTIONS = {
 	Tanod = "Sturdy guardian. Takes more hits.",
@@ -19,100 +19,116 @@ local DESCRIPTIONS = {
 	Albularyo = "Charm caster. Wards off the undead.",
 }
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "ClassPicker"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.Parent = playerGui
+local ICONS = { Tanod = "shield", Manghihilot = "cross", Albularyo = "moon" }
 
-local overlay = Instance.new("Frame")
-overlay.Size = UDim2.fromScale(1, 1)
-overlay.BackgroundColor3 = Color3.new(0, 0, 0)
-overlay.BackgroundTransparency = 0.4
-overlay.BorderSizePixel = 0
-overlay.Parent = gui
+local function mk(class, props, parent)
+	local o = Instance.new(class)
+	for k, v in pairs(props) do o[k] = v end
+	o.Parent = parent
+	return o
+end
 
-local panel = Instance.new("Frame")
-panel.Size = PANEL_SIZE
-panel.AnchorPoint = Vector2.new(0.5, 0.5)
-panel.Position = UDim2.fromScale(0.5, 0.5)
-panel.BackgroundColor3 = BLACK
-panel.BorderSizePixel = 0
-panel.Parent = overlay
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 16)
+-- Original shape icons, built from UI parts
+local function drawIcon(parent, kind)
+	local holder = mk("Frame", { Size = UDim2.fromOffset(34, 34), Position = UDim2.new(1, -44, 0.5, -17), BackgroundTransparency = 1 }, parent)
+	if kind == "shield" then
+		local s = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, holder)
+		Instance.new("UICorner", s).CornerRadius = UDim.new(0.35, 0)
+		mk("Frame", { Size = UDim2.fromScale(0.42, 0.42), Position = UDim2.fromScale(0.29, 0.29), BackgroundColor3 = RED, BorderSizePixel = 0 }, holder)
+	elseif kind == "cross" then
+		mk("Frame", { Size = UDim2.fromScale(0.3, 1), Position = UDim2.fromScale(0.35, 0), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, holder)
+		mk("Frame", { Size = UDim2.fromScale(1, 0.3), Position = UDim2.fromScale(0, 0.35), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, holder)
+	elseif kind == "moon" then
+		local m = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, holder)
+		Instance.new("UICorner", m).CornerRadius = UDim.new(1, 0)
+		mk("Frame", { Size = UDim2.fromScale(0.85, 0.85), Position = UDim2.fromScale(0.35, 0.05), BackgroundColor3 = RED_DARK, BorderSizePixel = 0 }, holder)
+		Instance.new("UICorner", holder:FindFirstChildWhichIsA("Frame")).CornerRadius = UDim.new(1, 0)
+	end
+end
 
-local panelStroke = Instance.new("UIStroke")
-panelStroke.Color = RED
-panelStroke.Thickness = 4
-panelStroke.Parent = panel
+local gui = mk("ScreenGui", { Name = "ClassPicker", ResetOnSpawn = false, IgnoreGuiInset = true }, playerGui)
 
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -24, 0, 46)
-title.Position = UDim2.new(0, 12, 0, 12)
-title.BackgroundColor3 = RED
-title.BorderSizePixel = 0
-title.Font = Enum.Font.GothamBlack
-title.Text = "PICK YOUR CLASS"
-title.TextColor3 = WHITE
-title.TextScaled = true
-title.Parent = panel
-Instance.new("UICorner", title).CornerRadius = UDim.new(0, 10)
+local overlay = mk("Frame", {
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 0.4,
+	BorderSizePixel = 0,
+}, gui)
 
-local titleStroke = Instance.new("UIStroke")
-titleStroke.Color = RED_DARK
-titleStroke.Thickness = 3
-titleStroke.Parent = title
+local panel = mk("Frame", {
+	Size = PANEL_SIZE,
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	BackgroundColor3 = BLACK,
+	BorderSizePixel = 0,
+}, overlay)
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
+mk("UIStroke", { Color = RED, Thickness = 3 }, panel)
+
+local title = mk("TextLabel", {
+	Size = UDim2.new(1, -20, 0, 36),
+	Position = UDim2.new(0, 10, 0, 10),
+	BackgroundColor3 = RED,
+	BorderSizePixel = 0,
+	Font = Enum.Font.GothamBlack,
+	Text = "PICK YOUR CLASS",
+	TextColor3 = WHITE,
+	TextScaled = true,
+}, panel)
+Instance.new("UICorner", title).CornerRadius = UDim.new(0, 8)
+mk("UIStroke", { Color = RED_DARK, Thickness = 2 }, title)
 
 for i, className in ipairs(Config.Classes) do
-	local y = 72 + (i - 1) * 74
+	local y = 56 + (i - 1) * 74
 
-	local lip = Instance.new("Frame")
-	lip.Size = UDim2.new(1, -32, 0, 62)
-	lip.Position = UDim2.new(0, 16, 0, y + 5)
-	lip.BackgroundColor3 = RED_DARK
-	lip.BorderSizePixel = 0
-	lip.Parent = panel
-	Instance.new("UICorner", lip).CornerRadius = UDim.new(0, 12)
+	local lip = mk("Frame", {
+		Size = UDim2.new(1, -20, 0, 62),
+		Position = UDim2.new(0, 10, 0, y + 4),
+		BackgroundColor3 = RED_DARK,
+		BorderSizePixel = 0,
+	}, panel)
+	Instance.new("UICorner", lip).CornerRadius = UDim.new(0, 10)
 
-	local button = Instance.new("TextButton")
-	button.Size = UDim2.new(1, -32, 0, 62)
-	button.Position = UDim2.new(0, 16, 0, y)
-	button.BackgroundColor3 = RED
-	button.BorderSizePixel = 0
-	button.AutoButtonColor = false
-	button.Text = ""
-	button.Parent = panel
-	Instance.new("UICorner", button).CornerRadius = UDim.new(0, 12)
+	local button = mk("TextButton", {
+		Size = UDim2.new(1, -20, 0, 62),
+		Position = UDim2.new(0, 10, 0, y),
+		BackgroundColor3 = RED,
+		BorderSizePixel = 0,
+		AutoButtonColor = false,
+		Text = "",
+	}, panel)
+	Instance.new("UICorner", button).CornerRadius = UDim.new(0, 10)
 
-	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1, -20, 0, 28)
-	nameLabel.Position = UDim2.new(0, 10, 0, 6)
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.Font = Enum.Font.GothamBlack
-	nameLabel.Text = string.upper(className)
-	nameLabel.TextColor3 = WHITE
-	nameLabel.TextScaled = true
-	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-	nameLabel.Parent = button
+	mk("TextLabel", {
+		Size = UDim2.new(1, -60, 0, 26),
+		Position = UDim2.new(0, 10, 0, 8),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBlack,
+		Text = string.upper(className),
+		TextColor3 = WHITE,
+		TextScaled = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, button)
 
-	local descLabel = Instance.new("TextLabel")
-	descLabel.Size = UDim2.new(1, -20, 0, 18)
-	descLabel.Position = UDim2.new(0, 10, 0, 36)
-	descLabel.BackgroundTransparency = 1
-	descLabel.Font = Enum.Font.GothamMedium
-	descLabel.Text = DESCRIPTIONS[className] or ""
-	descLabel.TextColor3 = Color3.fromRGB(255, 220, 220)
-	descLabel.TextScaled = true
-	descLabel.TextXAlignment = Enum.TextXAlignment.Left
-	descLabel.Parent = button
+	mk("TextLabel", {
+		Size = UDim2.new(1, -60, 0, 16),
+		Position = UDim2.new(0, 10, 0, 38),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamMedium,
+		Text = DESCRIPTIONS[className] or "",
+		TextColor3 = Color3.fromRGB(255, 220, 220),
+		TextScaled = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, button)
+
+	drawIcon(button, ICONS[className])
 
 	button.MouseButton1Down:Connect(function()
-		TweenService:Create(button, TweenInfo.new(0.08), { Position = UDim2.new(0, 18, 0, y + 3) }):Play()
+		TweenService:Create(button, TweenInfo.new(0.08), { Position = UDim2.new(0, 12, 0, y + 2) }):Play()
 	end)
 	button.MouseButton1Up:Connect(function()
-		TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Position = UDim2.new(0, 16, 0, y) }):Play()
+		TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Position = UDim2.new(0, 10, 0, y) }):Play()
 	end)
-
 	button.Activated:Connect(function()
 		player:SetAttribute("Class", className)
 		TweenService:Create(panel, TweenInfo.new(0.2), { Size = UDim2.fromOffset(0, 0) }):Play()
@@ -120,6 +136,5 @@ for i, className in ipairs(Config.Classes) do
 	end)
 end
 
--- Pop-in
 panel.Size = UDim2.fromOffset(0, 0)
 TweenService:Create(panel, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Size = PANEL_SIZE }):Play()
